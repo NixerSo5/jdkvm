@@ -99,8 +99,10 @@ func main() {
 		list(detail)
 	case "current":
 		current()
+	case "proxy":
+		proxy(detail)
 	case "version":
-			fmt.Println(JdkvmVersion)
+		fmt.Println(JdkvmVersion)
 	default:
 		fmt.Printf(`"%s" is not a valid command.`+"\n", args[1])
 		help()
@@ -134,6 +136,12 @@ func initializeEnvironment() {
 		fmt.Printf("Warning: Could not load version mapping: %v\n", err)
 		fmt.Println("You may need to specify full version numbers instead of just major versions.")
 	}
+	
+	// Load configuration from settings.txt
+	loadSettings()
+	
+	// Apply proxy settings
+	web.SetProxy(env.proxy, env.verifyssl)
 }
 
 // Check if we have admin privileges, and try to elevate if needed
@@ -342,6 +350,85 @@ func current() {
 	fmt.Printf("Java version %s (%s-bit) is currently in use.\n", inuse, arch)
 }
 
+// Load settings from configuration file
+func loadSettings() {
+	if !file.Exists(env.settings) {
+		// Create default settings file
+		saveSettings()
+		return
+	}
+
+	content, err := os.ReadFile(env.settings)
+	if err != nil {
+		fmt.Printf("Warning: Could not read settings file: %v\n", err)
+		return
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		switch strings.ToLower(key) {
+		case "proxy":
+			env.proxy = value
+		case "java_mirror":
+			env.java_mirror = value
+		case "verifyssl":
+			env.verifyssl = value == "true"
+		}
+	}
+}
+
+// Save settings to configuration file
+func saveSettings() {
+	content := "# JDKVM configuration file\n"
+	content += fmt.Sprintf("proxy=%s\n", env.proxy)
+	content += fmt.Sprintf("java_mirror=%s\n", env.java_mirror)
+	content += fmt.Sprintf("verifyssl=%t\n", env.verifyssl)
+
+	err := os.WriteFile(env.settings, []byte(content), 0644)
+	if err != nil {
+		fmt.Printf("Warning: Could not save settings file: %v\n", err)
+	}
+}
+
+// Handle proxy command
+func proxy(proxyUrl string) {
+	if proxyUrl == "" {
+		// Show current proxy settings
+		fmt.Printf("Current proxy: %s\n", env.proxy)
+		if env.proxy != "none" {
+			fmt.Println("To remove proxy, use: jdkvm proxy none")
+		}
+	} else {
+		// Set new proxy settings
+		env.proxy = proxyUrl
+		
+		// Apply proxy settings to HTTP client
+		web.SetProxy(proxyUrl, env.verifyssl)
+		
+		// Save to configuration file
+		saveSettings()
+		
+		if proxyUrl == "none" {
+			fmt.Println("Proxy removed.")
+		} else {
+			fmt.Printf("Proxy set to: %s\n", proxyUrl)
+		}
+	}
+}
+
 func help() {
 	fmt.Println("\nUsage: jdkvm [command] [arguments]\n")
 	fmt.Println("Commands:")
@@ -350,11 +437,14 @@ func help() {
 	fmt.Println("  uninstall, rm Uninstall a specific Java version")
 	fmt.Println("  list, ls      List installed or available Java versions")
 	fmt.Println("  current       Show current Java version")
+	fmt.Println("  proxy         Set or show proxy settings")
 	fmt.Println("  version       Show JDKVM version")
 
 	fmt.Println("\nExamples:")
 	fmt.Println("  jdkvm install 17")
 	fmt.Println("  jdkvm use 17")
 	fmt.Println("  jdkvm list installed")
+	fmt.Println("  jdkvm proxy http://127.0.0.1:7890")
+	fmt.Println("  jdkvm proxy none")
 	fmt.Println("  jdkvm uninstall 17")
 }

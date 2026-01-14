@@ -213,10 +213,18 @@ func GetJava(root string, v string, a string) bool {
 
 	// Create version directory
 	versionDir := filepath.Join(root, "v"+fullVersion)
-	if file.Exists(versionDir) {
+	
+	// Check if version is already installed (verify directory structure)
+	if file.Exists(versionDir) && file.Exists(filepath.Join(versionDir, "bin", "java.exe")) {
 		fmt.Printf("Java version %s is already installed.\n", fullVersion)
 		return true
+	} else if file.Exists(versionDir) {
+		// Clean up incomplete installation
+		fmt.Printf("Found incomplete installation of Java %s. Cleaning up...\n", fullVersion)
+		os.RemoveAll(versionDir)
 	}
+	
+	// Create version directory
 	os.MkdirAll(versionDir, os.ModeDir)
 
 	// Download the ZIP file
@@ -229,6 +237,7 @@ func GetJava(root string, v string, a string) bool {
 	if !Download(versionInfo.URL, zipPath, fullVersion) {
 		fmt.Println("Failed to download Java ZIP file.")
 		os.Remove(zipPath) // Clean up
+		os.RemoveAll(versionDir) // Clean up incomplete directory
 		return false
 	}
 
@@ -241,6 +250,7 @@ func GetJava(root string, v string, a string) bool {
 		fmt.Printf("Failed to unzip Java ZIP file: %v\n", err)
 		os.Remove(zipPath) // Clean up
 		os.RemoveAll(tempExtractDir) // Clean up
+		os.RemoveAll(versionDir) // Clean up incomplete directory
 		return false
 	}
 
@@ -258,6 +268,7 @@ func GetJava(root string, v string, a string) bool {
 		fmt.Println("Failed to find JDK directory in extracted files.")
 		os.Remove(zipPath) // Clean up
 		os.RemoveAll(tempExtractDir) // Clean up
+		os.RemoveAll(versionDir) // Clean up incomplete directory
 		return false
 	}
 
@@ -271,6 +282,7 @@ func GetJava(root string, v string, a string) bool {
 			fmt.Printf("Failed to move %s to %s: %v\n", item.Name(), versionDir, err)
 			os.Remove(zipPath) // Clean up
 			os.RemoveAll(tempExtractDir) // Clean up
+			os.RemoveAll(versionDir) // Clean up incomplete directory
 			return false
 		}
 	}
