@@ -3,8 +3,22 @@ package utility
 import (
 	"os"
 	"strings"
+	"syscall"
+	"unsafe"
 
 	"golang.org/x/sys/windows/registry"
+)
+
+// Windows API constants
+const (
+	HWND_BROADCAST   = 0xFFFF
+	WM_SETTINGCHANGE = 0x001A
+	SMTO_ABORTIFHUNG = 0x0002
+)
+
+var (
+	user32       = syscall.NewLazyDLL("user32.dll")
+	SendMessageTimeoutW = user32.NewProc("SendMessageTimeoutW")
 )
 
 // GetCurrentPath retrieves the current PATH environment variable
@@ -39,7 +53,13 @@ func AddToPath(dir string) error {
 	}
 	defer k.Close()
 
-	return k.SetStringValue("PATH", newPath)
+	err = k.SetStringValue("PATH", newPath)
+	if err != nil {
+		return err
+	}
+
+	// Notify Windows that environment variables have changed
+	return NotifyWindowsOfEnvironmentChange()
 }
 
 // SetEnvironmentVariable sets a system environment variable
@@ -61,7 +81,13 @@ func SetEnvironmentVariable(name, value string) error {
 	}
 	defer k.Close()
 
-	return k.SetStringValue(name, value)
+	err = k.SetStringValue(name, value)
+	if err != nil {
+		return err
+	}
+
+	// Notify Windows that environment variables have changed
+	return NotifyWindowsOfEnvironmentChange()
 }
 
 // GetEnvironmentVariable gets a system environment variable
@@ -84,6 +110,29 @@ func GetEnvironmentVariable(name string) (string, error) {
 
 	regValue, _, regErr := k.GetStringValue(name)
 	return regValue, regErr
+}
+
+// NotifyWindowsOfEnvironmentChange notifies Windows that environment variables have changed
+func NotifyWindowsOfEnvironmentChange() error {
+	// Convert "Environment" string to UTF-16 pointer
+	envStr, err := syscall.UTF16PtrFromString("Environment")
+	if err != nil {
+		return err
+	}
+
+	// Call SendMessageTimeout to notify all windows of the environment change
+	// Parameters: HWND, Msg, wParam, lParam, fuFlags, uTimeout, lpdwResult
+	_, _, err = SendMessageTimeoutW.Call(
+		uintptr(HWND_BROADCAST),
+		uintptr(WM_SETTINGCHANGE),
+		0,
+		uintptr(unsafe.Pointer(envStr)),
+		uintptr(SMTO_ABORTIFHUNG),
+		1000, // 1 second timeout
+		0,
+	)
+
+	return nil
 }
 
 // RemoveFromPath removes a directory from the system PATH
@@ -116,5 +165,11 @@ func RemoveFromPath(dir string) error {
 	}
 	defer k.Close()
 
-	return k.SetStringValue("PATH", newPath)
+	err = k.SetStringValue("PATH", newPath)
+	if err != nil {
+		return err
+	}
+
+	// Notify Windows that environment variables have changed
+	return NotifyWindowsOfEnvironmentChange()
 }
