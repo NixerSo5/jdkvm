@@ -1,0 +1,27 @@
+{
+  "8": {
+    "latest": "8u412-b08",
+    "url": "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u412-b08/OpenJDK8U-jdk_x64_windows_hotspot_8u412b08.zip",
+    "short": "8"
+  },
+  "11": {
+    "latest": "11.0.23+9",
+    "url": "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.23%2B9/OpenJDK11U-jdk_x64_windows_hotspot_11.0.23_9.zip",
+    "short": "11"
+  },
+  "17": {
+    "latest": "17.0.11+9",
+    "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.11%2B9/OpenJDK17U-jdk_x64_windows_hotspot_17.0.11_9.zip",
+    "short": "17"
+  },
+  "21": {
+    "latest": "21.0.3+9",
+    "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.3%2B9/OpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.zip",
+    "short": "21"
+  },
+  "25": {
+    "latest": "25.0.0+16",
+    "url": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25%2B16/OpenJDK25U-jdk_x64_windows_hotspot_25_16.zip",
+    "short": "25"
+  }
+}
